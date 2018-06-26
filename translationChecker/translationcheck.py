@@ -1,100 +1,116 @@
 #!/usr/bin/python
 import os
 
-repository = ["government-gateway-registration-frontend","multi-factor-authentication-frontend","reauthentication-frontend","company-auth-frontend","bas-gateway-frontend"]
+repositories = ["government-gateway-registration-frontend",
+              "multi-factor-authentication-frontend",
+              "reauthentication-frontend",
+              "company-auth-frontend",
+              "bas-gateway-frontend"]
 
-englishArr = []
-welshArr = []
-
-def deleteRepo(fileName):
-	os.system("rm -rf %s" % fileName)	
-
-def cloneAndSwitch(fileName):
-	os.system("git clone git@github.com:hmrc/%s.git" % fileName)
-	os.chdir(fileName)
+englishArr = {}
+welshArr = {}
+base_dir = os.getcwd()
 
 
-def getWelshTranslation(fileName):
-  welshTranslation = fileName.read().split("\n")
-  for line in welshTranslation:
-    if not line.startswith("#"):    
-        clearTranslation = line.split("=")
-        welshArr.append(clearTranslation)
-  return welshArr
-
-def getEnglishTranslation(fileName):
-  engTranslation = fileName.read().split("\n")
-  for line in engTranslation:
-    if not line.startswith("#"):
-        clearTranslation = line.split("=")
-        englishArr.append(clearTranslation)
-  return englishArr
+def delete_repo(file_name):
+    os.chdir(base_dir)
+    os.system("rm -rf %s" % file_name)
 
 
-def compare_length(welshArray, englishArray):
-  if(len(englishArray) == len(welshArray)):
-    return True
-  else:
-    return False
+def clone_and_switch(file_name):
+    print(base_dir)
+    os.chdir(base_dir)
+    os.system("git clone git@github.com:hmrc/%s.git" % file_name)
+    os.chdir(file_name)
 
-    
-def compare_keys(arrOne, arrTwo): 
-  for i in range (len(arrOne)):
-    if(arrOne[i][0] == arrTwo[i][0]):
-      return True
+
+def get_translation(file_name, array):
+    for line in file_name:
+        if not line.startswith("#") and line not in ['\n', '\r\n']:
+            key_value_pair = line.split("=")
+            array[key_value_pair[0].rstrip(' ')] = key_value_pair[1].lstrip(' ')
+    return array
+
+
+def compare_length(welsh_array, english_array):
+    print("Number of Keys In English File = " + str(len(english_array)))
+    print("Number of Keys In Welsh File = " + str(len(welsh_array)))
+
+    if len(english_array) == len(welsh_array):
+        return True
     else:
-      print arrOne[i][0] + "not the same as " + arrTwo[i][0]
-      
+        return False
 
 
-def compare_values(arrOne, arrTwo):
-  for i in range (len(arrOne)):
-    if(arrOne[i][1] != arrTwo[i][1]):
-      return True
+def compare_keys(arr_one, arr_two):
+    for key in arr_one:
+        if key in arr_two:
+            return True
+        else:
+            print(arr_one[key] + "not in other file")
+
+
+def compare_values(arr_one, arr_two):
+    for key in arr_one:
+        if arr_one[key] != arr_two[key]:
+            return True
+        else:
+            print(arr_one[key] + " SAME AS " + arr_two[key])
+
+
+def compare(arr_one, arr_two):
+    if compare_length(arr_one, arr_two):
+        compare_key_and_value(arr_one, arr_two)
     else:
-      print arrOne[i][1] + " SAME AS " + arrTwo[i][1]
-      
-
-def compare(arrOne, arrTwo):
-  if(compare_length(arrOne,arrTwo)):
-    compare_key_and_value(arrOne,arrTwo)
-  else:
-    print("-----Number of keys or Values dont match up-----")
+        print("ERROR: Mismatch in the number of keys in each file")
 
 
-def compare_key_and_value(arrOne, arrTwo):
-  try:
-    compare_values(arrOne,arrTwo)
-    compare_keys(arrOne,arrTwo)
-    print "---Number of Keys and Values are the same on both files.-----"
-    print"Its safe to assume that each english key value has welsh translation"
-  except IndexError:
-    print "----------Missing or Extra key Values-----------"
-
-
-def openEnglishMessages():
+def compare_key_and_value(arr_one, arr_two):
     try:
-        openedFile = open("conf/messages", "r")
-	return openedFile
-    except IOError:
-        print("ERROR: Couldnt find messages file")
+        compare_keys(arr_one, arr_two)
+        compare_values(arr_one, arr_two)
+        print("Number of keys are the same on both files the values of each key are different.")
+        print("Its safe to assume that each english key value has welsh translation")
+    except IndexError:
+        print("ERROR: Missing or Extra key Values")
 
-def openWelshMessages():
+
+def open_english_messages():
     try:
-        openedFile = open("conf/messages.cy", "r")
-	return openedFile
+        opened_file = open("conf/messages", "r")
+        return opened_file
     except IOError:
-	print("ERROR: Couldnt find messages.cy file")
+        print("ERROR: Couldn't find messages file")
+        return None
 
 
-for repos in repository:
-	deleteRepo(repos)
-        cloneAndSwitch(repos)
-	english = openEnglishMessages()
-	welsh = openWelshMessages()
-	print("Checking %s" % repos + "\n")
-        compare(getEnglishTranslation(english),getWelshTranslation(welsh))
-	print("----Check complete---- \n")
-	welshArr = []
-	englishArr = []
-	deleteRepo(repos)
+def open_welsh_messages():
+    try:
+        opened_file = open("conf/messages.cy", "r")
+        return opened_file
+    except IOError:
+        print("ERROR: Couldn't find messages.cy file")
+        return None
+
+
+for repo in repositories:
+    print("Check starting for " + repo)
+    delete_repo(repo)
+    clone_and_switch(repo)
+    english = open_english_messages()
+    welsh = open_welsh_messages()
+
+    if english is not None and welsh is not None:
+        print("Comparing key and values for " + repo)
+        compare(get_translation(english, englishArr), get_translation(welsh, welshArr))
+    else:
+        if english is None:
+            print("English file was not found")
+        if welsh is None:
+            print("Welsh file was not found")
+
+    print("Check complete for " + repo)
+
+    englishArr.clear()
+    welshArr.clear()
+    delete_repo(repo)
