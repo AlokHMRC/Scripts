@@ -32,7 +32,7 @@ def get_translation(file_name, array):
     return array
 
 
-def compare_length(welsh_array, english_array):
+def compare_length(english_array, welsh_array):
     print("Number of Keys In English File = " + str(len(english_array)))
     print("Number of Keys In Welsh File = " + str(len(welsh_array)))
 
